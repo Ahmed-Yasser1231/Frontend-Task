@@ -7,11 +7,15 @@ const Searchbar = () => {
     const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
 
     useEffect(() => {
-        if (searchTerm) {
-            setSearchParams({ search: searchTerm });
-        } else {
-            setSearchParams({});
-        }
+        setSearchParams((previousParams) => {
+            const params = new URLSearchParams(previousParams);
+            if (searchTerm) {
+                params.set('search', searchTerm);
+            } else {
+                params.delete('search');
+            }
+            return params;
+        });
     }, [searchTerm, setSearchParams]);
 
     const handleInputChange = (e) => {
@@ -19,14 +23,14 @@ const Searchbar = () => {
     };
 
     return (
-        <div className="flex items-center rounded py-1.5 px-3 bg-white ">
-            <img src={searchIcon} alt="Search" className="w-4 h-4 mr-2" />
+        <div className="flex w-full sm:w-72 items-center rounded-lg border border-gray-200 bg-white py-2 px-3 shadow-sm">
+            <img src={searchIcon} alt="Search" className="w-4 h-4 mr-2 shrink-0" />
             <input
                 type="text"
                 value={searchTerm}
                 onChange={handleInputChange}
                 placeholder="Search..."
-                className="flex-1 outline-none"
+                className="flex-1 min-w-0 outline-none bg-transparent text-sm"
            
            />
         </div>

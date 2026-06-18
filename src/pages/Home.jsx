@@ -27,6 +27,7 @@ const Home = () => {
       const averagePrice = noOfBooks > 0 ? totalPrice / noOfBooks : 0;
 
       return {
+        id: store.id,
         name: store.name,
         noOfBooks,
         averagePrice,
@@ -40,6 +41,7 @@ const Home = () => {
     return authors.slice(0, 5).map((author) => { 
       const noOfBooks = books.filter((book) => book.author_id === author.id).length;
       return {
+        id: author.id,
         name: `${author.first_name} ${author.last_name}`,
         noOfBooks,
       };
@@ -51,21 +53,21 @@ const Home = () => {
   }
 
   return (
-    <div className="py-6 px-4">
+    <div className="py-4 sm:py-6 px-0 sm:px-4">
       {/* Stores Section */}
       <section className="mb-8">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">Stores</h2>
           <Link 
             to="/browsestores" 
-            className="bg-main text-white px-4 py-2 rounded-md hover:bg-main/90 transition-colors"
+            className="bg-main text-white px-4 py-2 rounded-md hover:bg-main/90 transition-colors w-full sm:w-auto text-center"
           >
             View All
           </Link>
         </div>
-        <div className="flex overflow-x-auto gap-4 pb-4">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {storesWithMetrics.map((store, index) => (
-            <div key={index} className="flex-shrink-0">
+            <div key={store.id ?? index}>
               <StoreCard
                 name={store.name}
                 noOfBooks={store.noOfBooks}
@@ -79,18 +81,18 @@ const Home = () => {
 
       {/* Books Section */}
       <section className="mb-8">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">Books</h2>
           <Link 
             to="/browsebooks" 
-            className="bg-main text-white px-4 py-2 rounded-md hover:bg-main/90 transition-colors"
+            className="bg-main text-white px-4 py-2 rounded-md hover:bg-main/90 transition-colors w-full sm:w-auto text-center"
           >
             View All
           </Link>
         </div>
-        <div className="flex overflow-x-auto gap-4 pb-4">
+        <div className="grid grid-cols-1 gap-4">
           {limitedBooksWithStores.map((book, index) => (
-            <div key={index} className="flex-shrink-0">
+            <div key={book.title ?? index}>
               <BookCard
                 title={book.title}
                 author={book.author}
@@ -103,19 +105,20 @@ const Home = () => {
 
       {/* Authors Section */}
       <section className="mb-8">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">Authors</h2>
           <Link 
             to="/browseauthors" 
-            className="bg-main text-white px-4 py-2 rounded-md hover:bg-main/90 transition-colors"
+            className="bg-main text-white px-4 py-2 rounded-md hover:bg-main/90 transition-colors w-full sm:w-auto text-center"
           >
             View All
           </Link>
         </div>
-        <div className="flex overflow-x-auto gap-4 pb-4">
-          {authorsWithBookCount.map((author, index) => (
-            <div key={index} className="flex-shrink-0">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          {authorsWithBookCount.map((author) => (
+            <div key={author.id}>
               <AuthorCard
+                id={author.id}
                 name={author.name}
                 noOfBooks={author.noOfBooks}
               />

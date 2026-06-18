@@ -18,8 +18,8 @@ import useBooksWithStores from './business/useBooksWithStores';
 const useLibraryData = ({ storeId = null, searchTerm = '' } = {}) => {
   // ── Data fetching ──────────────────────────────────────────────
   const { books, setBooks, isLoading: booksLoading, error: booksError } = useBooks();
-  const { authors, isLoading: authorsLoading, error: authorsError } = useAuthors();
-  const { stores, isLoading: storesLoading, error: storesError } = useStores();
+  const { authors, setAuthors, isLoading: authorsLoading, error: authorsError } = useAuthors();
+  const { stores, setStores, isLoading: storesLoading, error: storesError } = useStores();
   const { inventory, setInventory, isLoading: inventoryLoading, error: inventoryError } = useInventory();
 
   // ── Transforms ─────────────────────────────────────────────────
@@ -38,7 +38,9 @@ const useLibraryData = ({ storeId = null, searchTerm = '' } = {}) => {
     books,
     setBooks,
     authors,
+    setAuthors,
     stores,
+    setStores,
     inventory,
     setInventory,
     authorMap,

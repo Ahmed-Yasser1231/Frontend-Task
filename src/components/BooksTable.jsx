@@ -15,6 +15,8 @@ const BooksTable = ({
   deleteBook,
   columnsConfig = ['id', 'name', 'pages', 'author', 'actions'], // Default columns
 }) => {
+  const [editError, setEditError] = React.useState('');
+
   // Create a lookup map for authors
   const authorMap = useMemo(() => {
     return authors.reduce((map, author) => {
@@ -40,17 +42,26 @@ const BooksTable = ({
         accessorKey: 'name',
         cell: ({ row }) =>
           editingRowId === row.original.id ? (
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSave(row.original.id);
-                if (e.key === 'Escape') handleCancel();
-              }}
-              className="border border-gray-300 rounded p-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
+            <div className="w-full">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => {
+                  setEditName(e.target.value);
+                  if (editError) {
+                    setEditError('');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSave(row.original.id);
+                  if (e.key === 'Escape') handleCancel();
+                }}
+                className={`w-full rounded p-1 outline-none focus:ring-2 ${editError ? 'border border-red-400 bg-red-50 focus:ring-red-300' : 'border border-gray-300 focus:ring-blue-500'}`}
+                autoFocus
+                aria-invalid={Boolean(editError)}
+              />
+              {editError ? <p className="mt-1 text-xs text-red-600">{editError}</p> : null}
+            </div>
           ) : (
             row.original.name
           ),
@@ -74,7 +85,7 @@ const BooksTable = ({
         ),
       },
     }),
-    [editingRowId, editName]
+    [editingRowId, editName, editError]
   );
 
   // Select columns based on columnsConfig
@@ -90,20 +101,28 @@ const BooksTable = ({
 
   // Save edited name
   const handleSave = (id) => {
+    if (!editName.trim()) {
+      setEditError('Book name is required');
+      toast.error('Book name is required');
+      return;
+    }
+
     setBooks(
       books.map((book) =>
-        book.id === id ? { ...book, name: editName } : book
+        book.id === id ? { ...book, name: editName.trim() } : book
       )
     );
-    toast.success(`Book updated to "${editName}"`);
+    toast.success(`Book updated to "${editName.trim()}"`);
     setEditingRowId(null);
     setEditName('');
+    setEditError('');
   };
 
   // Cancel editing
   const handleCancel = () => {
     setEditingRowId(null);
     setEditName('');
+    setEditError('');
   };
 
   return <Table data={enrichedBooks} columns={columns} />;

@@ -14,6 +14,7 @@ const StoreInventory = lazy(() => import('./pages/StoreInventory'));
 const BrowseBooks = lazy(() => import('./pages/BrowseBooks'));
 const BrowseAuthors = lazy(() => import('./pages/BrowseAuthors'));
 const BrowseStores = lazy(() => import('./pages/BrowseStores'));
+const AuthorProfile = lazy(() => import('./pages/AuthorProfile'));
 function App() {
   return (
     <Router>
@@ -54,6 +55,7 @@ function App() {
             <Route path="/books" element={<Books />} />
             <Route path="/author" element={<Authors />} />
             <Route path="/store/:storeId" element={<StoreInventory />} />
+            <Route path="/author/:authorId" element={<AuthorProfile />} />
             <Route path="/browsebooks" element={<BrowseBooks />} />
             <Route path="/browseauthors" element={<BrowseAuthors />} />
             <Route path="/browsestores" element={<BrowseStores />} />

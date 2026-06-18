@@ -8,14 +8,17 @@ import { useSearchParams } from 'react-router-dom';
 import Modal from '../components/Modal';
 import TableActions from '../components/ActionButton/TableActions';
 import confirmToast from '../utils/confirmToast';
+import useLibraryData from '../hooks/useLibraryData';
 
 const Authors = () => {
-  const [authors, setAuthors] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const { authors, setAuthors, isLoading } = useLibraryData();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [editingRowId, setEditingRowId] = useState(null);
   const [editName, setEditName] = useState('');
   const [newName, setNewName] = useState('');
+  const [editError, setEditError] = useState('');
+  const [formErrors, setFormErrors] = useState({});
   const [showModal, setShowModal] = useState(false);
 
   // Sync searchTerm with query params
@@ -23,17 +26,6 @@ const Authors = () => {
     const search = searchParams.get('search') || '';
     setSearchTerm(search);
   }, [searchParams]);
-
-  // Fetch JSON data
-  useEffect(() => {
-    fetch('/data/authors.json')
-      .then((response) => response.json())
-      .then((data) => {
-        console.log('Fetched authors:', data);
-        setAuthors(Array.isArray(data) ? data : [data]);
-      })
-      .catch((error) => console.error('Error fetching authors:', error));
-  }, []);
 
   // filter based on search
   const filteredAuthors = useMemo(() => {
@@ -55,21 +47,29 @@ const Authors = () => {
         id: 'name',
         cell: ({ row }) =>
           editingRowId === row.original.id ? (
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  handleSave(row.original.id);
-                } else if (e.key === 'Escape') {
-                  handleCancel();
-                }
-              }}
-              className="border border-gray-300 rounded p-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-              tooltip="Enter to save"
-            />
+            <div className="w-full">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => {
+                  setEditName(e.target.value);
+                  if (editError) {
+                    setEditError('');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleSave(row.original.id);
+                  } else if (e.key === 'Escape') {
+                    handleCancel();
+                  }
+                }}
+                className={`rounded p-1 w-full outline-none focus:ring-2 ${editError ? 'border border-red-400 bg-red-50 focus:ring-red-300' : 'border border-gray-300 focus:ring-blue-500'}`}
+                autoFocus
+                aria-invalid={Boolean(editError)}
+              />
+              {editError ? <p className="mt-1 text-xs text-red-600">{editError}</p> : null}
+            </div>
           ) : (
             `${row.original.first_name} ${row.original.last_name}`
           ),
@@ -90,7 +90,7 @@ const Authors = () => {
         ),
       },
     ],
-    [[editingRowId, editName]]
+    [editingRowId, editName, editError]
   );
 
   const deleteAuthor = async (id, first_name, last_name) => {
@@ -112,6 +112,12 @@ const Authors = () => {
   };
 
   const handleSave = (id) => {
+    if (!editName.trim()) {
+      setEditError('Author name is required');
+      toast.error('Author name is required');
+      return;
+    }
+
     const [first_name, ...last_name_parts] = editName.trim().split(' ');
     const last_name = last_name_parts.join(' ');
 
@@ -126,11 +132,13 @@ const Authors = () => {
     toast.success(`Author updated to "${editName.trim()}"`);
     setEditingRowId(null);
     setEditName('');
+    setEditError('');
   };
 
   const handleCancel = () => {
     setEditingRowId(null);
     setEditName('');
+    setEditError('');
   };
 
   const openModal = () => {
@@ -138,10 +146,13 @@ const Authors = () => {
   };
   const closeModal = () => {
     setShowModal(false);
+    setFormErrors({});
+    setNewName('');
   };
   const handleAddNew = () => {
     if (newName.trim() === '') {
-      toast.error('Please enter a name');
+      setFormErrors({ name: 'Author name is required' });
+      toast.error('Author name is required');
       return;
     }
     const [first_name, ...last_name_parts] = newName.trim().split(' ');
@@ -157,20 +168,20 @@ const Authors = () => {
     toast.success(`${first_name} ${last_name || ''} has been added`.trim());
 
     setNewName('');
+    setFormErrors({});
     closeModal();
   };
 
   return (
     <div className='py-6'>
       <Header addNew={openModal} title="Authors List" />
-      {authors.length > 0 ? (
+      {isLoading ? (
+        <Loading />
+      ) : (
         <Table
           data={filteredAuthors}
           columns={columns}
-         
         />
-      ) : (
-        <Loading />
       )}
       <Modal
         title={' New Author'}
@@ -180,15 +191,26 @@ const Authors = () => {
         setShow={setShowModal}
       >
         <div className="flex flex-col gap-2 w-full">
+          {formErrors.name ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+              {formErrors.name}
+            </div>
+          ) : null}
           <span>Author Name</span>
           <input
             type="text"
             placeholder="Name"
             value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            className="border border-gray-300 rounded p-1 ps-3 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+            onChange={(e) => {
+              setNewName(e.target.value);
+              if (formErrors.name) {
+                setFormErrors({});
+              }
+            }}
+            className={`rounded p-1 ps-3 w-full outline-none focus:ring-2 ${formErrors.name ? 'border border-red-400 bg-red-50 focus:ring-red-300' : 'border border-gray-300 focus:ring-blue-500'}`}
+            aria-invalid={Boolean(formErrors.name)}
           />
-          <span className="hidden text-red-500">Please enter a name</span>
+          {formErrors.name ? <p className="text-sm text-red-600">{formErrors.name}</p> : null}
         </div>
       </Modal>
     </div>

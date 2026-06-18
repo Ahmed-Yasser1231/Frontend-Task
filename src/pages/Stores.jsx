@@ -8,43 +8,34 @@ import Modal from '../components/Modal';
 import TableActions from '../components/ActionButton/TableActions';
 import { useNavigate } from 'react-router-dom';
 import confirmToast from '../utils/confirmToast';
+import useLibraryData from '../hooks/useLibraryData';
 
 const Stores = () => {
   const navigate = useNavigate();
+  const { stores, setStores, isLoading } = useLibraryData();
   
 
   const handleViewStoreInventory = (storeId) => {
     navigate(`/store/${storeId}`);
   };  
 
-  // State declarations
-  const [stores, setStores] = useState([]);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [editingRowId, setEditingRowId] = useState(null);
   const [editName, setEditName] = useState('');
+  const [editError, setEditError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [newStore, setNewStore] = useState({
     name: '',
     address: '',
   });
+  const [formErrors, setFormErrors] = useState({});
 
   // Sync search term with URL query parameters
   useEffect(() => {
     const search = searchParams.get('search') || '';
     setSearchTerm(search);
   }, [searchParams]);
-
-  // Fetch stores data
-  useEffect(() => {
-    fetch('/data/stores.json')
-      .then((response) => response.json())
-      .then((data) => {
-        console.log('Fetched stores:', data);
-        setStores(Array.isArray(data) ? data : [data]);
-      })
-      .catch((error) => console.error('Error fetching stores:', error));
-  }, []);
 
   // Enrich stores with computed address and filter based on search term
   const filteredStores = useMemo(() => {
@@ -72,17 +63,26 @@ const Stores = () => {
         accessorKey: 'name',
         cell: ({ row }) =>
           editingRowId === row.original.id ? (
-            <input
-              type="text"
-              value={editName}
-              onChange={(e) => setEditName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSave(row.original.id);
-                if (e.key === 'Escape') handleCancel();
-              }}
-              className="border border-gray-300 rounded p-1 w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
-            />
+            <div className="w-full">
+              <input
+                type="text"
+                value={editName}
+                onChange={(e) => {
+                  setEditName(e.target.value);
+                  if (editError) {
+                    setEditError('');
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSave(row.original.id);
+                  if (e.key === 'Escape') handleCancel();
+                }}
+                className={`rounded p-1 w-full outline-none focus:ring-2 ${editError ? 'border border-red-400 bg-red-50 focus:ring-red-300' : 'border border-gray-300 focus:ring-blue-500'}`}
+                autoFocus
+                aria-invalid={Boolean(editError)}
+              />
+              {editError ? <p className="mt-1 text-xs text-red-600">{editError}</p> : null}
+            </div>
           ) : (
             row.original.name
           ),
@@ -104,7 +104,7 @@ const Stores = () => {
         ),
       },
     ],
-    [editingRowId, editName]
+    [editingRowId, editName, editError]
   );
 
   // Handle store deletion
@@ -126,26 +126,35 @@ const Stores = () => {
 
   // Save edited name
   const handleSave = (id) => {
+    if (!editName.trim()) {
+      setEditError('Store name is required');
+      toast.error('Store name is required');
+      return;
+    }
+
     setStores(
       stores.map((store) =>
-        store.id === id ? { ...store, name: editName } : store
+        store.id === id ? { ...store, name: editName.trim() } : store
       )
     );
-    toast.success(`Store updated to "${editName}"`);
+    toast.success(`Store updated to "${editName.trim()}"`);
     setEditingRowId(null);
     setEditName('');
+    setEditError('');
   };
 
   // Cancel editing
   const handleCancel = () => {
     setEditingRowId(null);
     setEditName('');
+    setEditError('');
   };
 
   // Modal controls
   const openModal = () => setShowModal(true);
   const closeModal = () => {
     setShowModal(false);
+    setFormErrors({});
     setNewStore({
       name: '',
       address: '',
@@ -189,8 +198,19 @@ const Stores = () => {
 
   // Add new store
   const handleAddNew = () => {
-    if (newStore.name.trim() === '' || newStore.address.trim() === '') {
-      toast.error('Store Name and Address are required');
+    const nextErrors = {};
+
+    if (newStore.name.trim() === '') {
+      nextErrors.name = 'Store name is required';
+    }
+
+    if (newStore.address.trim() === '') {
+      nextErrors.address = 'Store address is required';
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFormErrors(nextErrors);
+      toast.error('Please fix the highlighted fields');
       return;
     }
 
@@ -219,6 +239,7 @@ const Stores = () => {
       name: '',
       address: '',
     });
+    setFormErrors({});
     closeModal();
   };
   const onRowClick = (e, rw) => {
@@ -227,10 +248,10 @@ const Stores = () => {
   return (
     <div className="py-6">
       <Header addNew={openModal} title="Stores List" />
-      {stores.length > 0 ? (
-        <Table data={filteredStores} columns={columns} onRowClick={onRowClick} />
-      ) : (
+      {isLoading ? (
         <Loading />
+      ) : (
+        <Table data={filteredStores} columns={columns} onRowClick={onRowClick} />
       )}
       <Modal
         title="New Store"
@@ -240,6 +261,11 @@ const Stores = () => {
         setShow={setShowModal}
       >
         <div className="flex flex-col gap-4 w-full">
+          {Object.values(formErrors).some(Boolean) ? (
+            <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm">
+              Please correct the highlighted fields before saving.
+            </div>
+          ) : null}
           <div>
             <label htmlFor="name" className="block text-gray-700 font-medium mb-1">
               Store Name
@@ -248,11 +274,18 @@ const Stores = () => {
               id="name"
               type="text"
               value={newStore.name}
-              onChange={(e) => setNewStore({ ...newStore, name: e.target.value })}
-              className="border border-gray-300 rounded p-2 w-full"
+              onChange={(e) => {
+                setNewStore({ ...newStore, name: e.target.value });
+                if (formErrors.name) {
+                  setFormErrors((previous) => ({ ...previous, name: undefined }));
+                }
+              }}
+              className={`rounded p-2 w-full outline-none transition shadow-sm focus:ring-2 ${formErrors.name ? 'border border-red-400 bg-red-50 focus:ring-red-300' : 'border border-gray-300 focus:ring-main'}`}
               placeholder="Enter Store Name"
               required
+              aria-invalid={Boolean(formErrors.name)}
             />
+            {formErrors.name ? <p className="mt-1 text-sm text-red-600">{formErrors.name}</p> : null}
           </div>
           <div>
             <label htmlFor="address" className="block text-gray-700 font-medium mb-1">
@@ -262,11 +295,18 @@ const Stores = () => {
               id="address"
               type="text"
               value={newStore.address}
-              onChange={(e) => setNewStore({ ...newStore, address: e.target.value })}
-              className="border border-gray-300 rounded p-2 w-full"
+              onChange={(e) => {
+                setNewStore({ ...newStore, address: e.target.value });
+                if (formErrors.address) {
+                  setFormErrors((previous) => ({ ...previous, address: undefined }));
+                }
+              }}
+              className={`rounded p-2 w-full outline-none transition shadow-sm focus:ring-2 ${formErrors.address ? 'border border-red-400 bg-red-50 focus:ring-red-300' : 'border border-gray-300 focus:ring-main'}`}
               placeholder="e.g., 123 Main St, 2nd Floor, Athens, GA 30605"
               required
+              aria-invalid={Boolean(formErrors.address)}
             />
+            {formErrors.address ? <p className="mt-1 text-sm text-red-600">{formErrors.address}</p> : null}
           </div>
         </div>
       </Modal>

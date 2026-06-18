@@ -2,7 +2,14 @@ import { useMemo } from 'react';
 
 const useStoreBooks = ({ storeId, books, inventory, authorMap, searchTerm }) => {
   const storeBooks = useMemo(() => {
-    if (!storeId) return books;
+    if (!storeId) {
+      return books.map((book) => ({
+        ...book,
+        author_name: authorMap[book.author_id]?.name || 'Unknown Author',
+        price: null,
+        inventoryId: null,
+      }));
+    }
 
     const numericStoreId = parseInt(storeId, 10);
     const storeInventory = inventory.filter(
@@ -17,7 +24,12 @@ const useStoreBooks = ({ storeId, books, inventory, authorMap, searchTerm }) => 
         const inventoryItem = storeInventory.find(
           (item) => item.book_id === book.id
         );
-        return { ...book, price: inventoryItem ? inventoryItem.price : null };
+        return {
+          ...book,
+          author_name: authorMap[book.author_id]?.name || 'Unknown Author',
+          price: inventoryItem ? inventoryItem.price : null,
+          inventoryId: inventoryItem ? inventoryItem.id : null,
+        };
       });
 
     if (searchTerm.trim()) {
