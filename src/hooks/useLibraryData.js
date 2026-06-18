@@ -1,94 +1,38 @@
 // src/hooks/useLibraryData.js
-import { useEffect, useState, useMemo } from 'react';
+//
+// Lightweight composition hook that orchestrates the smaller,
+// single-responsibility hooks.  Contains ZERO business logic itself —
+// it simply wires data-fetching → transforms → business hooks and
+// exposes the same public API as the original monolithic hook so that
+// consumer components require no changes.
+
+import useBooks from './api/useBooks';
+import useAuthors from './api/useAuthors';
+import useStores from './api/useStores';
+import useInventory from './api/useInventory';
+import useAuthorMap from './transforms/useAuthorMap';
+import useStoreMap from './transforms/useStoreMap';
+import useStoreBooks from './business/useStoreBooks';
+import useBooksWithStores from './business/useBooksWithStores';
 
 const useLibraryData = ({ storeId = null, searchTerm = '' } = {}) => {
-  // State for data
-  const [books, setBooks] = useState([]);
-  const [authors, setAuthors] = useState([]);
-  const [stores, setStores] = useState([]);
-  const [inventory, setInventory] = useState([]);
+  // ── Data fetching ──────────────────────────────────────────────
+  const { books, setBooks, isLoading: booksLoading, error: booksError } = useBooks();
+  const { authors, isLoading: authorsLoading, error: authorsError } = useAuthors();
+  const { stores, isLoading: storesLoading, error: storesError } = useStores();
+  const { inventory, setInventory, isLoading: inventoryLoading, error: inventoryError } = useInventory();
 
-  // Fetch all data
-  useEffect(() => {
-    fetch('/data/stores.json')
-      .then((response) => response.json())
-      .then((data) => setStores(Array.isArray(data) ? data : [data]))
-      .catch((error) => console.error('Error fetching stores:', error));
+  // ── Transforms ─────────────────────────────────────────────────
+  const authorMap = useAuthorMap(authors);
+  const storeMap = useStoreMap(stores);
 
-    fetch('/data/books.json')
-      .then((response) => response.json())
-      .then((data) => setBooks(Array.isArray(data) ? data : [data]))
-      .catch((error) => console.error('Error fetching books:', error));
+  // ── Business logic ─────────────────────────────────────────────
+  const storeBooks = useStoreBooks({ storeId, books, inventory, authorMap, searchTerm });
+  const booksWithStores = useBooksWithStores({ books, inventory, authorMap, storeMap });
 
-    fetch('/data/authors.json')
-      .then((response) => response.json())
-      .then((data) => setAuthors(Array.isArray(data) ? data : [data]))
-      .catch((error) => console.error('Error fetching authors:', error));
-
-    fetch('/data/inventory.json')
-      .then((response) => response.json())
-      .then((data) => setInventory(Array.isArray(data) ? data : [data]))
-      .catch((error) => console.error('Error fetching inventory:', error));
-  }, []);
-
-  // Create lookup maps
-  const authorMap = useMemo(() => {
-    return authors.reduce((map, author) => {
-      map[author.id] = { ...author, name: `${author.first_name} ${author.last_name}` };
-      return map;
-    }, {});
-  }, [authors]);
-
-  const storeMap = useMemo(() => {
-    return stores.reduce((map, store) => {
-      map[store.id] = store;
-      return map;
-    }, {});
-  }, [stores]);
-
-  // Filter books for a specific store (for Inventory page)
-  const storeBooks = useMemo(() => {
-    if (!storeId) return books;
-
-    const storeInventory = inventory.filter((item) => item.store_id === parseInt(storeId, 10));
-
-    let filteredBooks = books
-      .filter((book) => storeInventory.some((item) => item.book_id === book.id))
-      .map((book) => {
-        const inventoryItem = storeInventory.find((item) => item.book_id === book.id);
-        return { ...book, price: inventoryItem ? inventoryItem.price : null };
-      });
-
-    if (searchTerm.trim()) {
-      const lowerSearch = searchTerm.toLowerCase();
-      filteredBooks = filteredBooks.filter((book) =>
-        Object.values({ ...book, author_name: authorMap[book.author_id]?.name || 'Unknown Author' })
-          .some((value) => String(value).toLowerCase().includes(lowerSearch))
-      );
-    }
-
-    return filteredBooks;
-  }, [storeId, books, inventory, searchTerm, authorMap]);
-
-  // Map books to their stores (for Browse page)
-  const booksWithStores = useMemo(() => {
-    return books.map((book) => {
-      const bookInventory = inventory.filter((item) => item.book_id === book.id);
-      const bookStores = bookInventory.map((item) => ({
-        name: storeMap[item.store_id]?.name || 'Unknown Store',
-        price: item.price,
-      }));
-
-      return {
-        title: book.name,
-        author: authorMap[book.author_id]?.name || 'Unknown Author',
-        stores: bookStores,
-      };
-    });
-  }, [books, inventory, authorMap, storeMap]);
-
-  // Loading state
-  const isLoading = !books.length || !authors.length || !stores.length || !inventory.length;
+  // ── Aggregated state ───────────────────────────────────────────
+  const isLoading = booksLoading || authorsLoading || storesLoading || inventoryLoading;
+  const error = booksError || authorsError || storesError || inventoryError;
 
   return {
     books,
@@ -102,6 +46,7 @@ const useLibraryData = ({ storeId = null, searchTerm = '' } = {}) => {
     storeBooks,
     booksWithStores,
     isLoading,
+    error,
     currentStore: stores.find((store) => store.id === parseInt(storeId, 10)),
   };
 };

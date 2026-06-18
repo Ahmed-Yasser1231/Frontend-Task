@@ -1,5 +1,6 @@
 // src/components/BooksTable.jsx
 import React, { useMemo } from 'react';
+import toast from 'react-hot-toast';
 import Table from './Table/Table';
 import TableActions from './ActionButton/TableActions';
 
@@ -94,6 +95,7 @@ const BooksTable = ({
         book.id === id ? { ...book, name: editName } : book
       )
     );
+    toast.success(`Book updated to "${editName}"`);
     setEditingRowId(null);
     setEditName('');
   };

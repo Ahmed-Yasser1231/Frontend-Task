@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import toast from 'react-hot-toast';
 import Header from '../components/Header';
 import Loading from './Loading';
 import BooksTable from '../components/BooksTable';
 import { useSearchParams } from 'react-router-dom';
 import Modal from '../components/Modal';
+import confirmToast from '../utils/confirmToast';
 
 const Books = () => {
   const [books, setBooks] = useState([]);
@@ -47,18 +49,20 @@ const Books = () => {
   });
 
   // Delete book handler
-  const deleteBook = (id, name) => {
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+  const deleteBook = async (id, name) => {
+    const confirmed = await confirmToast(`Are you sure you want to delete "${name}"?`);
+    if (confirmed) {
       setBooks((prevBooks) => prevBooks.filter((book) => book.id !== id));
       setEditingRowId(null);
       setEditName('');
+      toast.success(`"${name}" has been deleted`);
     }
   };
 
   // Add new book handler
   const handleAddNew = () => {
     if (!newBook.author_id || !newBook.name || !newBook.page_count) {
-      alert('All fields are required');
+      toast.error('All fields are required');
       return;
     }
 
@@ -73,6 +77,7 @@ const Books = () => {
     setBooks((prevBooks) => [...prevBooks, newBookObject]);
     setNewBook({ author_id: '', name: '', page_count: '' });
     setShowModal(false);
+    toast.success(`"${newBookObject.name}" has been added`);
   };
 
   return (

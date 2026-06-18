@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import Header from '../components/Header';
 import Loading from './Loading';
 import Table from '../components/Table/Table';
@@ -6,6 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 
 import Modal from '../components/Modal';
 import TableActions from '../components/ActionButton/TableActions';
+import confirmToast from '../utils/confirmToast';
 
 const Authors = () => {
   const [authors, setAuthors] = useState([]);
@@ -91,14 +93,16 @@ const Authors = () => {
     [[editingRowId, editName]]
   );
 
-  const deleteAuthor = (id, first_name, last_name) => {
-    // show prompt
-
-    if (window.confirm(`Are you sure you want to delete ${first_name} ${last_name}?`)) {
+  const deleteAuthor = async (id, first_name, last_name) => {
+    const confirmed = await confirmToast(
+      `Are you sure you want to delete ${first_name} ${last_name}?`
+    );
+    if (confirmed) {
       setAuthors((prevAuthors) => prevAuthors.filter((author) => author.id !== id));
       setEditingRowId(null);
       setEditName('');
       setNewName('');
+      toast.success(`${first_name} ${last_name} has been deleted`);
     }
   };
 
@@ -119,7 +123,7 @@ const Authors = () => {
       )
     );
 
-
+    toast.success(`Author updated to "${editName.trim()}"`);
     setEditingRowId(null);
     setEditName('');
   };
@@ -137,6 +141,7 @@ const Authors = () => {
   };
   const handleAddNew = () => {
     if (newName.trim() === '') {
+      toast.error('Please enter a name');
       return;
     }
     const [first_name, ...last_name_parts] = newName.trim().split(' ');
@@ -149,7 +154,7 @@ const Authors = () => {
     };
 
     setAuthors((prevAuthors) => [...prevAuthors, newAuthor]);
-    
+    toast.success(`${first_name} ${last_name || ''} has been added`.trim());
 
     setNewName('');
     closeModal();

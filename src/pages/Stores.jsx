@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import toast from 'react-hot-toast';
 import Header from '../components/Header';
 import Loading from './Loading';
 import Table from '../components/Table/Table';
@@ -6,6 +7,7 @@ import { useSearchParams } from 'react-router-dom';
 import Modal from '../components/Modal';
 import TableActions from '../components/ActionButton/TableActions';
 import { useNavigate } from 'react-router-dom';
+import confirmToast from '../utils/confirmToast';
 
 const Stores = () => {
   const navigate = useNavigate();
@@ -106,11 +108,13 @@ const Stores = () => {
   );
 
   // Handle store deletion
-  const deleteStore = (id, name) => {
-    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+  const deleteStore = async (id, name) => {
+    const confirmed = await confirmToast(`Are you sure you want to delete "${name}"?`);
+    if (confirmed) {
       setStores((prevStores) => prevStores.filter((store) => store.id !== id));
       setEditingRowId(null);
       setEditName('');
+      toast.success(`"${name}" has been deleted`);
     }
   };
 
@@ -127,6 +131,7 @@ const Stores = () => {
         store.id === id ? { ...store, name: editName } : store
       )
     );
+    toast.success(`Store updated to "${editName}"`);
     setEditingRowId(null);
     setEditName('');
   };
@@ -185,7 +190,7 @@ const Stores = () => {
   // Add new store
   const handleAddNew = () => {
     if (newStore.name.trim() === '' || newStore.address.trim() === '') {
-      alert('Store Name and Address are required');
+      toast.error('Store Name and Address are required');
       return;
     }
 
@@ -193,7 +198,7 @@ const Stores = () => {
     const { address_1, address_2, city, state, zip } = parseAddress(newStore.address);
 
     if (!city || !state || !zip) {
-      alert('Address must include city, state, and zip (e.g., "123 Main St, Athens, GA 30605")');
+      toast.error('Address must include city, state, and zip (e.g., "123 Main St, Athens, GA 30605")');
       return;
     }
 
@@ -209,6 +214,7 @@ const Stores = () => {
     };
 
     setStores((prevStores) => [...prevStores, newStoreObject]);
+    toast.success(`"${newStoreObject.name}" has been added`);
     setNewStore({
       name: '',
       address: '',
